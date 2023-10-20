@@ -68,6 +68,7 @@ async def send_to_channel_query(callback: types.CallbackQuery):
 💵 \- Дороговато
 
 \\#{str(category[0][1]).replace(' ', '_').lower()}
+\\#{"ozon" if "ozon" in link else "wildberries"}
 """.replace('_', '\_')
 
     message = message_1 + message_2 + message_3
