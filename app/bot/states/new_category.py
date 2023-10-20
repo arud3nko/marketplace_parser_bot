@@ -11,3 +11,5 @@ class NewCategoryStates(StatesGroup):
     get_admin_chat_id = State()
     get_channel_chat_id = State()
     get_multi_channel_chat_id = State()
+
+    get_to_delete_id = State()

@@ -9,6 +9,8 @@ async def set_admit_commands():
     admin_commands = [
         BotCommand(command="/new_category",
                    description="Добавить новую категорию"),
+        BotCommand(command="/delete",
+                   description="Удалить категорию"),
         BotCommand(command="/cancel",
                    description="Отмена")
     ]

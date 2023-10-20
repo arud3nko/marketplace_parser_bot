@@ -9,3 +9,6 @@ class NewCategory(StrEnum):
     GET_CHANNEL_CHAT_ID = "Отправьте ID (никнейм) канала"
     GET_MULTI_CHANNEL_CHAT_ID = "Отправьте ID (никнейм) общего канала"
     OK = "Категория успешно добавлена"
+
+    GET_TO_DELETE_ID = "Отправьте ID категории для удаления"
+    OK_DELETE = "Категория успешно удалена"

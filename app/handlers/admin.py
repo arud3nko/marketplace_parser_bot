@@ -6,12 +6,50 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import default_state
+from aiogram.enums import ParseMode
 
 from app.db.db import DB
-from app.config.config import DB_CATEGORIES_TABLE, SUPER_ADMIN_CHAT_ID
+from app.config.config import (DB_CATEGORIES_TABLE, SUPER_ADMIN_CHAT_ID, TABLE_CATEGORIES,
+                               ITER_CATEGORY_ID, ITER_CATEGORY_NAME, ITER_CATEGORY_OZON_LINK, ITER_CATEGORY_WB_LINK,
+                               ITER_CATEGORY_ADMIN_CHAT_ID, ITER_CATEGORY_CHANNEL_CHAT_ID,
+                               ITER_CATEGORY_MULTI_CHANNEL_CHAT_ID)
 from app.keyboards.keyboards import build_kb_cancel_multi_channel
 
 admin_router = Router()
+
+
+def format_special_chars(string: str) -> str:
+    # return string.replace("_", '\\_')\
+    #               .replace("*", '\\*')\
+    #               .replace("[", '\\[')\
+    #               .replace("]", '\\]')\
+    #               .replace("(", '\\(')\
+    #               .replace(")", '\\)')\
+    #               .replace("~", '\\~')\
+    #               .replace("`", '\\`')\
+    #               .replace(">", '\\>')\
+    #               .replace("#", '\\#')\
+    #               .replace("+", '\\+')\
+    #               .replace("-", '\\-')\
+    #               .replace("=", '\\=')\
+    #               .replace("|", '\\|')\
+    #               .replace("{", '\\{')\
+    #               .replace("}", '\\}')\
+    #               .replace(".", '\\.')\
+    #               .replace("!", '\\!')
+
+    return string
+
+
+def format_category_info_message(ID: int, name: str, ozon: str, wb: str, admin: str, channel: str, multi: str) -> str:
+    return f"""<b>{format_special_chars(name)}</b>\n
+<b>id</b>: {ID}
+<b>ozon</b>: {format_special_chars(ozon)}
+<b>wb</b>: {format_special_chars(wb)}
+<b>admin</b>: {format_special_chars(admin)}
+<b>channel</b>: {format_special_chars(channel)}
+<b>multi_channel</b>: {format_special_chars(multi)}\n
+"""
 
 
 @admin_router.message(Command(commands='cancel'), ~StateFilter(default_state), F.chat.id == SUPER_ADMIN_CHAT_ID)
@@ -22,6 +60,63 @@ async def process_cancel_command_state(message: Message, state: FSMContext):
 @admin_router.message(Command(commands='cancel'), StateFilter(default_state), F.chat.id == SUPER_ADMIN_CHAT_ID)
 async def process_cancel_command_state_default(message: Message, state: FSMContext):
     await state.clear()
+
+
+@admin_router.message(Command(commands='delete'), StateFilter(default_state), F.chat.id == SUPER_ADMIN_CHAT_ID)
+async def delete_category_handler(message: Message, state: FSMContext):
+    db = DB()
+
+    categories = await db.select(table_name=TABLE_CATEGORIES)
+
+    all_categories_formatted_message = ""
+
+    for category in categories:
+        all_categories_formatted_message += format_category_info_message(
+            ID=category[ITER_CATEGORY_ID],
+            name=category[ITER_CATEGORY_NAME],
+            ozon=category[ITER_CATEGORY_OZON_LINK],
+            wb=category[ITER_CATEGORY_WB_LINK],
+            admin=category[ITER_CATEGORY_ADMIN_CHAT_ID],
+            channel=category[ITER_CATEGORY_CHANNEL_CHAT_ID],
+            multi=category[ITER_CATEGORY_MULTI_CHANNEL_CHAT_ID]
+        )
+
+    await message.answer(
+        text=all_categories_formatted_message,
+        parse_mode=ParseMode.HTML
+    )
+
+    await message.answer(
+        text=NewCategory.GET_TO_DELETE_ID
+    )
+    await state.set_state(NewCategoryStates.get_to_delete_id)
+
+
+@admin_router.message(StateFilter(NewCategoryStates.get_to_delete_id), F.chat.id == SUPER_ADMIN_CHAT_ID)
+async def get_to_delete_id(message: Message, state: FSMContext):
+    if not message.text.isdigit():
+        await message.answer(text="Ошибка: ID категории должен быть числом")
+
+    db = DB()
+    categories = await db.select(table_name=TABLE_CATEGORIES)
+
+    ID = int(message.text)
+    IDs = [category[ITER_CATEGORY_ID] for category in categories]
+
+    if not ID in IDs:
+        await message.answer(text="Ошибка: категория с таким ID не найдена")
+
+    try:
+        await db.delete(table_name=TABLE_CATEGORIES,
+                        where_cond="id",
+                        where_value=ID)
+        await message.answer(
+            text=NewCategory.OK_DELETE
+        )
+    except Exception as e:
+        await message.answer(text=f"Ошибка при удалении категории: {e}")
+    finally:
+        await state.clear()
 
 
 @admin_router.message(Command(commands='new_category'), StateFilter(default_state), F.chat.id == SUPER_ADMIN_CHAT_ID)
